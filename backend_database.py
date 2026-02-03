@@ -72,6 +72,40 @@ class LocalFileDatabase:
                     'created_at': client_data.get('created_at', '')
                 }
         return None
+    
+    def get_client_by_id(self, client_id: str) -> Optional[dict]:
+        """Récupère les données complètes d'un client par ID"""
+        if client_id in self.data.get('clients', {}):
+            client_data = self.data['clients'][client_id]
+            return {
+                'id_client': client_id,
+                'email': client_data.get('email', ''),
+                'password_hash': client_data.get('password_hash', ''),
+                'id_fb': client_data.get('id_fb', ''),
+                'id_insta': client_data.get('id_insta', ''),
+                'nom_entreprise': client_data.get('nom_entreprise', ''),
+                'secteur': client_data.get('secteur', ''),
+                'created_at': client_data.get('created_at', '')
+            }
+        return None
+    
+    def update_client(self, client_data: dict) -> bool:
+        """Met à jour les données d'un client"""
+        client_id = client_data.get('id_client')
+        if not client_id or client_id not in self.data.get('clients', {}):
+            return False
+        
+        # Mettre à jour les champs
+        self.data['clients'][client_id].update({
+            'email': client_data.get('email', self.data['clients'][client_id].get('email')),
+            'password_hash': client_data.get('password_hash', self.data['clients'][client_id].get('password_hash')),
+            'id_fb': client_data.get('id_fb', self.data['clients'][client_id].get('id_fb')),
+            'id_insta': client_data.get('id_insta', self.data['clients'][client_id].get('id_insta')),
+            'nom_entreprise': client_data.get('nom_entreprise', self.data['clients'][client_id].get('nom_entreprise')),
+            'secteur': client_data.get('secteur', self.data['clients'][client_id].get('secteur')),
+        })
+        self._save()
+        return True
 
 
 
@@ -186,6 +220,65 @@ class SheetDatabase:
             'secteur': row[6],
             'created_at': row[7]
         }
+    
+    def get_client_by_id(self, client_id: str) -> Optional[dict]:
+        """Récupère les données complètes d'un client par ID"""
+        try:
+            all_values = self.clients_sheet.get_all_values()
+            
+            for idx, row in enumerate(all_values[1:], start=2):  # Commencer à la ligne 2 (après headers)
+                if len(row) > 0 and row[0] == client_id:
+                    if len(row) < 8:
+                        return None
+                    
+                    return {
+                        'id_client': row[0],
+                        'email': row[1],
+                        'password_hash': row[2],
+                        'id_fb': row[3],
+                        'id_insta': row[4],
+                        'nom_entreprise': row[5],
+                        'secteur': row[6],
+                        'created_at': row[7]
+                    }
+            
+            return None
+        except Exception as e:
+            print(f"Erreur lors de la recherche client par ID: {e}")
+            return None
+    
+    def update_client(self, client_data: dict) -> bool:
+        """Met à jour les données d'un client"""
+        try:
+            client_id = client_data.get('id_client')
+            if not client_id:
+                return False
+            
+            all_values = self.clients_sheet.get_all_values()
+            
+            for idx, row in enumerate(all_values[1:], start=2):  # Commencer à la ligne 2 (après headers)
+                if len(row) > 0 and row[0] == client_id:
+                    # Préparer la nouvelle ligne
+                    new_row = [
+                        client_data.get('id_client', row[0]),
+                        client_data.get('email', row[1]),
+                        client_data.get('password_hash', row[2]),
+                        client_data.get('id_fb', row[3]),
+                        client_data.get('id_insta', row[4]),
+                        client_data.get('nom_entreprise', row[5]),
+                        client_data.get('secteur', row[6]),
+                        row[7]  # Garder la date de création
+                    ]
+                    
+                    # Mettre à jour la ligne
+                    self.clients_sheet.delete_rows(idx, 1)
+                    self.clients_sheet.insert_row(new_row, idx)
+                    return True
+            
+            return False
+        except Exception as e:
+            print(f"Erreur lors de la mise à jour du client: {e}")
+            return False
 
 
 # Instance globale si Google Sheets est configuré

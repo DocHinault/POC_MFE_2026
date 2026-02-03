@@ -230,3 +230,78 @@ def oauth_status(email: str) -> Dict[str, Any]:
         'id_fb': oauth_data.get('id_fb'),
         'id_insta': oauth_data.get('id_insta')
     }
+
+
+def update_user_profile(user_id: str, email: str = None, nom_entreprise: str = None, secteur: str = None, password: str = None, pepper: str = None) -> Dict[str, Any]:
+    """
+    Met à jour le profil d'un utilisateur
+    
+    Args:
+        user_id: ID du client
+        email: Nouvel email (optionnel)
+        nom_entreprise: Nouveau nom (optionnel)
+        secteur: Nouveau secteur (optionnel)
+        password: Nouveau mot de passe (optionnel)
+        pepper: Clé secrète pour PBKDF2
+    """
+    # Validation
+    if not user_id:
+        return {'ok': False, 'error': 'INVALID_INPUT'}
+    
+    # Récupérer le client
+    db = database.get_database()
+    if not db:
+        return {'ok': False, 'error': 'DATABASE_ERROR'}
+    
+    client = db.get_client_by_id(user_id)
+    if not client:
+        return {'ok': False, 'error': 'CLIENT_NOT_FOUND'}
+    
+    # Valider les nouvelles données
+    if email and not validate_email(email):
+        return {'ok': False, 'error': 'INVALID_EMAIL'}
+    
+    # Vérifier si l'email est déjà utilisé (par un autre utilisateur)
+    if email and email != client.get('email'):
+        existing = db.find_client_by_email(email)
+        if existing:
+            return {'ok': False, 'error': 'EMAIL_EXISTS'}
+    
+    if password and not validate_password(password):
+        return {'ok': False, 'error': 'INVALID_PASSWORD'}
+    
+    if secteur and not validate_secteur(secteur):
+        return {'ok': False, 'error': 'INVALID_SECTEUR'}
+    
+    # Préparer la mise à jour
+    update_data = {'id_client': user_id}
+    
+    if email:
+        update_data['email'] = email
+    
+    if nom_entreprise:
+        update_data['nom_entreprise'] = nom_entreprise
+    
+    if secteur:
+        update_data['secteur'] = secteur
+    
+    if password and pepper:
+        update_data['password_hash'] = auth.hash_password(password, pepper)
+    else:
+        update_data['password_hash'] = client.get('password_hash')
+    
+    # Ajouter les champs non modifiables
+    update_data['id_fb'] = client.get('id_fb', '')
+    update_data['id_insta'] = client.get('id_insta', '')
+    
+    # Mettre à jour dans la base de données
+    if db and hasattr(db, 'update_client'):
+        result = db.update_client(update_data)
+        if result:
+            return {'ok': True, 'id_client': user_id}
+        else:
+            return {'ok': False, 'error': 'UPDATE_FAILED'}
+    else:
+        # Fallback: mettre à jour le client en cache
+        cache.put(f'CLIENT_{user_id}', update_data, 24 * 60 * 60)
+        return {'ok': True, 'id_client': user_id}

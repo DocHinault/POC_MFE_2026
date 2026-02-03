@@ -56,3 +56,16 @@ class LocalBackendAPI:
         Récupère le statut OAuth
         """
         return backend_service.oauth_status(email)
+    
+    def update_user_profile(self, user_id: str, email: str = None, nom_entreprise: str = None, secteur: str = None, password: str = None) -> dict:
+        """
+        Met à jour le profil d'un utilisateur
+        """
+        return backend_service.update_user_profile(
+            user_id=user_id,
+            email=email,
+            nom_entreprise=nom_entreprise,
+            secteur=secteur,
+            password=password,
+            pepper=self.pepper_secret
+        )
