@@ -22,12 +22,27 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
 
-# Secteurs
+# ===== Secteurs =====
 SECTEURS = ["Influenceur", "Salle de sport", "Hôtellerie/Restauration"]
 
-# KPIs par secteur
+# ===== KPIs par secteur =====
 KPI_MAPPING = {
     "Influenceur": ["Engagement", "Reach", "Impressions", "Followers Growth"],
     "Salle de sport": ["Member Inquiries", "Class Bookings", "Membership Views", "Location Visits"],
     "Hôtellerie/Restauration": ["Reservations", "Menu Views", "Call Clicks", "Website Visits"]
+}
+
+# ===== Prompts GPT par secteur =====
+GPT_PROMPTS = {
+    "Influenceur": """Analyse les KPIs d'un influenceur.
+Focus: engagement, reach, croissance des followers.
+Recommandations: type de contenu, horaires de publication, collaborations.""",
+    
+    "Salle de sport": """Analyse les KPIs d'une salle de sport.
+Focus: conversion membres, réservations cours, visites profil.
+Recommandations: promotions, types de cours, moments clés.""",
+    
+    "Hôtellerie/Restauration": """Analyse les KPIs d'un restaurant/hôtel.
+Focus: réservations, vues menu, clics appel, visites site web.
+Recommandations: plats à mettre en avant, offres spéciales, timing posts."""
 }

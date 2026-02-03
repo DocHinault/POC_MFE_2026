@@ -1,7 +1,7 @@
 """Pages de l'application"""
 import streamlit as st
 from datetime import datetime
-from config import SECTEURS, FACEBOOK_APP_ID, INSTAGRAM_BUSINESS_ACCOUNT_ID, APPS_SCRIPT_URL, API_KEY
+from config import SECTEURS, FACEBOOK_APP_ID, INSTAGRAM_BUSINESS_ACCOUNT_ID
 from auth import (
     validate_email_format,
     is_valid_password
@@ -848,56 +848,247 @@ def page_p1():
     """, unsafe_allow_html=True)
     
     # Navigation - Tabs style
-    col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 1.5, 2, 1])
+    col1, col2, col3, col_spacer, col_logout = st.columns([1.2, 1.2, 1.2, 3, 1])
     
     with col1:
-        if st.button("📊 Profil", use_container_width=True, key="nav_profile", help="Voir votre profil"):
-            st.session_state.current_page = "dashboard"
+        if st.button("👤 Profil", use_container_width=True, key="nav_profile", help="Gérer votre profil"):
+            st.session_state.current_page = "profile"
             st.rerun()
     
     with col2:
-        if st.button("🔗 Liaison", use_container_width=True, key="nav_accounts", help="Lier vos comptes sociaux"):
-            st.session_state.current_page = "accounts"
+        if st.button("🔗 Liaison", use_container_width=True, key="nav_accounts", help="Connecter vos comptes"):
+            st.session_state.current_page = "linking"
             st.rerun()
     
     with col3:
-        if st.button("📈 Analyse", use_container_width=True, key="nav_analyze", help="Voir les analyses"):
-            st.session_state.current_page = "analyze"
+        if st.button("📈 Analyse", use_container_width=True, key="nav_analyze", help="Analyser vos performances"):
+            st.session_state.current_page = "analysis"
             st.rerun()
     
-    with col5:
-        if st.button("🚪 Déconnexion", use_container_width=True, key="logout_btn", help="Quitter"):
+    with col_logout:
+        if st.button("🚪 Déconnexion", use_container_width=True, key="logout_btn"):
             st.session_state.authenticated = False
             st.session_state.user_email = None
             st.session_state.user_id = None
             st.session_state.user_data = None
             st.session_state.auth_mode = None
             st.session_state.page = "auth"
-            st.session_state.current_page = "dashboard"
+            st.session_state.current_page = "profile"
             st.rerun()
     
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Initialiser le state de la page actuelle
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "dashboard"
+        st.session_state.current_page = "profile"
     
     # Router selon la page sélectionnée
-    if st.session_state.current_page == "dashboard":
-        show_dashboard()
-    elif st.session_state.current_page == "accounts":
-        page_social_linking()
-    elif st.session_state.current_page == "analyze":
-        show_analytics()
-    elif st.session_state.current_page == "edit_profile":
-        show_edit_profile()
+    if st.session_state.current_page == "profile":
+        show_profile_tab()
+    elif st.session_state.current_page == "linking":
+        show_linking_tab()
+    elif st.session_state.current_page == "analysis":
+        show_analysis_tab()
 
 
-def show_analytics():
-    """Page d'analyse"""
-    st.markdown("<h2 style='color: #1E293B;'>📈 Analytics & Insights</h2>", unsafe_allow_html=True)
+def show_profile_tab():
+    """Onglet Profil - Affichage et édition des informations"""
+    st.markdown("""
+    <h2 style='color: #0F172A; margin-bottom: 2rem;'>👤 Votre profil</h2>
+    """, unsafe_allow_html=True)
     
-    st.info("💡 Cette fonctionnalité sera bientôt disponible. Vous pourrez analyser vos performances sur tous vos comptes sociaux.")
+    # Afficher les informations du profil
+    if st.session_state.user_data:
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("""
+            <div style='text-align: center;'>
+                <div style='width: 120px; height: 120px; background: linear-gradient(135deg, #2563EB, #1E40AF); border-radius: 16px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 50px; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);'>
+                    👤
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class='card animate-in'>
+                <div class='card-header'>
+                    <h3 class='card-title'>Informations du compte</h3>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            user_data = st.session_state.user_data
+            
+            st.markdown(f"""
+            <div style='margin-bottom: 1rem;'>
+                <p style='color: #78828F; font-size: 0.875rem; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;'>Email</p>
+                <p style='color: #0F172A; font-size: 1rem; margin: 0; font-weight: 500;'>{user_data.get('email', 'N/A')}</p>
+            </div>
+            
+            <div style='margin-bottom: 1rem;'>
+                <p style='color: #78828F; font-size: 0.875rem; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;'>Entreprise</p>
+                <p style='color: #0F172A; font-size: 1rem; margin: 0; font-weight: 500;'>{user_data.get('nom_entreprise', 'N/A')}</p>
+            </div>
+            
+            <div style='margin-bottom: 1.5rem;'>
+                <p style='color: #78828F; font-size: 0.875rem; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;'>Secteur</p>
+                <p style='color: #0F172A; font-size: 1rem; margin: 0; font-weight: 500;'>{user_data.get('secteur', 'N/A')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("✏️ Modifier le profil", use_container_width=True, key="edit_profile_btn"):
+                st.session_state.current_page = "edit_profile"
+                st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+
+
+def show_linking_tab():
+    """Onglet Liaison - Connecter Instagram et Facebook"""
+    from pages.page_social_linking import page_social_linking
+    page_social_linking()
+
+
+def show_analysis_tab():
+    """Onglet Analyse - Analyser et générer rapports"""
+    st.markdown("""
+    <h2 style='color: #0F172A; margin-bottom: 2rem;'>📈 Analyse & Recommandations</h2>
+    """, unsafe_allow_html=True)
+    
+    # Vérifier si des comptes sont liés
+    from social_auth import SocialMediaLinkManager
+    manager = SocialMediaLinkManager()
+    linked_accounts = manager.get_linked_accounts(st.session_state.user_id)
+    
+    if not linked_accounts:
+        st.markdown("""
+        <div class='card animate-in' style='text-align: center; padding: 3rem 2rem;'>
+            <div style='font-size: 3rem; margin-bottom: 1rem;'>🔐</div>
+            <p style='color: #64748B; font-size: 1.1rem; margin: 0.5rem 0; font-weight: 500;'>Aucun compte lié</p>
+            <p style='color: #78828F; font-size: 0.95rem; margin: 0;'>Connectez vos comptes Instagram et Facebook pour activer l'analyse</p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+    
+    # Afficher les options d'analyse
+    st.markdown("""
+    <div class='card animate-in'>
+        <div style='display: flex; align-items: center; margin-bottom: 1.5rem;'>
+            <span style='font-size: 1.5rem; margin-right: 0.75rem;'>📊</span>
+            <h3 style='margin: 0; color: #0F172A;'>Pipeline d'analyse</h3>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <p style='color: #64748B; margin-bottom: 1.5rem;'>
+    Lancez l'analyse complète de vos performances sociales du dernier mois. 
+    Le système va:
+    </p>
+    
+    <ul style='color: #64748B; line-height: 1.8;'>
+        <li>📊 Récupérer tous les KPI de vos comptes</li>
+        <li>💾 Sauvegarder les données dans Google Sheet</li>
+        <li>🤖 Utiliser l'IA (GPT) pour analyser les performances</li>
+        <li>📄 Générer un PowerPoint professionnel</li>
+        <li>📧 Envoyer le rapport par email avec recommandations</li>
+    </ul>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Afficher les comptes liés
+    st.markdown("""
+    <div class='card animate-in'>
+        <h3 style='color: #0F172A; margin-top: 0;'>Comptes connectés</h3>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    if 'instagram' in linked_accounts:
+        with col1:
+            st.markdown(f"""
+            <div style='padding: 1rem; background: #F8FAFC; border-radius: 8px; border-left: 4px solid #E879F9;'>
+                <p style='margin: 0 0 0.5rem 0; color: #78828F; font-size: 0.875rem;'>Instagram</p>
+                <p style='margin: 0; color: #0F172A; font-weight: 600;'>@{linked_accounts['instagram'].get('username', 'Unknown')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    if 'facebook' in linked_accounts or 'facebook_pages' in linked_accounts:
+        with col2:
+            pages = linked_accounts.get('facebook_pages', [])
+            if pages:
+                pages_text = f"{len(pages)} page(s)"
+                st.markdown(f"""
+                <div style='padding: 1rem; background: #F8FAFC; border-radius: 8px; border-left: 4px solid #1877F2;'>
+                    <p style='margin: 0 0 0.5rem 0; color: #78828F; font-size: 0.875rem;'>Facebook</p>
+                    <p style='margin: 0; color: #0F172A; font-weight: 600;'>{pages_text}</p>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Bouton pour lancer l'analyse
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col2:
+        if st.button("🚀 Lancer l'analyse complète", use_container_width=True, key="run_analysis"):
+            with st.spinner("⏳ Analyse en cours... Cela peut prendre quelques minutes"):
+                try:
+                    from analysis_pipeline import AnalysisPipeline
+                    
+                    # Préparer les données Instagram
+                    instagram_data = None
+                    if 'instagram' in linked_accounts:
+                        instagram_data = {
+                            'id': linked_accounts['instagram'].get('id'),
+                            'access_token': linked_accounts['instagram'].get('access_token')
+                        }
+                    
+                    # Préparer les données Facebook
+                    facebook_data = []
+                    if 'facebook_pages' in linked_accounts:
+                        facebook_data = [
+                            {
+                                'id': page.get('id'),
+                                'access_token': page.get('access_token')
+                            }
+                            for page in linked_accounts['facebook_pages']
+                            if page.get('id') and page.get('access_token')
+                        ]
+                    
+                    # Créer le pipeline
+                    pipeline = AnalysisPipeline(
+                        user_id=st.session_state.user_id,
+                        user_email=st.session_state.user_email,
+                        user_name=st.session_state.user_data.get('nom_entreprise', 'Client')
+                    )
+                    
+                    # Lancer l'analyse complète
+                    result = pipeline.run_full_pipeline(
+                        instagram_data=instagram_data,
+                        facebook_data=facebook_data,
+                        sheet_id=None  # À implémenter avec l'ID de la Google Sheet de l'utilisateur
+                    )
+                    
+                    if result['success']:
+                        st.success("✅ Analyse complétée avec succès!")
+                        st.success(f"📊 {result['instagram_kpis'].get('total_posts', 0) if result['instagram_kpis'] else 0} posts Instagram analysés")
+                        if result['email_sent']:
+                            st.info("📧 Le rapport a été envoyé à votre email")
+                        if result['powerpoint_path']:
+                            st.info(f"📄 PowerPoint généré: {result['powerpoint_path']}")
+                    else:
+                        st.warning(f"⚠️ L'analyse a eu des problèmes: {', '.join(result['errors'])}")
+                        if result['powerpoint_path']:
+                            st.info(f"Un rapport partiel a été généré: {result['powerpoint_path']}")
+                        
+                except Exception as e:
+                    st.error(f"❌ Erreur lors de l'analyse: {str(e)}")
 
 
 def show_edit_profile():
@@ -1087,163 +1278,6 @@ def show_edit_profile():
                         st.error("Cet email est déjà utilisé. Veuillez en choisir un autre.")
                     else:
                         st.error(f"Erreur: {error}")
-
-
-def show_dashboard():
-    """Affiche le dashboard principal"""
-    st.markdown("""
-    <h2 style='color: #0F172A; margin-bottom: 2rem;'>👤 Votre profil</h2>
-    """, unsafe_allow_html=True)
-    
-    # Afficher les informations du profil
-    if st.session_state.user_data:
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            st.markdown("""
-            <div style='text-align: center;'>
-                <div style='width: 120px; height: 120px; background: linear-gradient(135deg, #2563EB, #1E40AF); border-radius: 16px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 50px; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);'>
-                    👤
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class='card animate-in'>
-                <div class='card-header'>
-                    <h3 class='card-title'>Informations du compte</h3>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            user_data = st.session_state.user_data
-            
-            st.markdown(f"""
-            <div style='margin-bottom: 1rem;'>
-                <p style='color: #78828F; font-size: 0.875rem; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;'>Email</p>
-                <p style='color: #0F172A; font-size: 1rem; margin: 0; font-weight: 500;'>{user_data.get('email', 'N/A')}</p>
-            </div>
-            
-            <div style='margin-bottom: 1rem;'>
-                <p style='color: #78828F; font-size: 0.875rem; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;'>Entreprise</p>
-                <p style='color: #0F172A; font-size: 1rem; margin: 0; font-weight: 500;'>{user_data.get('nom_entreprise', 'N/A')}</p>
-            </div>
-            
-            <div style='margin-bottom: 1.5rem;'>
-                <p style='color: #78828F; font-size: 0.875rem; margin: 0 0 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;'>Secteur</p>
-                <p style='color: #0F172A; font-size: 1rem; margin: 0; font-weight: 500;'>{user_data.get('secteur', 'N/A')}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button("✏️ Modifier le profil", use_container_width=True, key="edit_profile"):
-                st.session_state.current_page = "edit_profile"
-                st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    # Comptes sociaux liés
-    from social_auth import SocialMediaLinkManager
-    manager = SocialMediaLinkManager()
-    linked_accounts = manager.get_linked_accounts(st.session_state.user_id)
-    
-    st.markdown("<h3 style='color: #0F172A; margin-bottom: 1.5rem;'>🔗 Comptes sociaux liés</h3>", unsafe_allow_html=True)
-    
-    if not linked_accounts:
-        st.markdown("""
-        <div class='card animate-in' style='text-align: center; padding: 3rem 2rem;'>
-            <div style='font-size: 3rem; margin-bottom: 1rem;'>🔐</div>
-            <p style='color: #64748B; font-size: 1.1rem; margin: 0.5rem 0; font-weight: 500;'>Aucun compte social lié</p>
-            <p style='color: #78828F; font-size: 0.95rem; margin: 0;'>Connectez vos comptes Instagram et Facebook pour commencer</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            st.metric("📸 Instagram", "0", "Non lié")
-        with col2:
-            st.metric("📘 Facebook", "0", "Non lié")
-        with col3:
-            st.metric("👥 Total", "0", "Followers")
-    else:
-        # Afficher les métriques
-        col1, col2, col3 = st.columns(3)
-        
-        total_accounts = len([v for k, v in linked_accounts.items() if k != 'facebook_pages'])
-        total_pages = len(linked_accounts.get('facebook_pages', []))
-        total_followers = 0
-        
-        if 'instagram' in linked_accounts:
-            total_followers += linked_accounts['instagram'].get('followers_count', 0)
-        
-        for page in linked_accounts.get('facebook_pages', []):
-            total_followers += page.get('fans_count', 0)
-        
-        with col1:
-            st.metric("Comptes liés", total_accounts, "actifs")
-        with col2:
-            st.metric("Pages gérées", total_pages, "Facebook")
-        with col3:
-            st.metric("Followers total", f"{total_followers:,}", "tous réseaux")
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Instagram
-        if 'instagram' in linked_accounts:
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
-            st.markdown("<h4 style='color: #1E293B; margin-top: 0;'>📸 Instagram</h4>", unsafe_allow_html=True)
-            
-            ig = linked_accounts['instagram']
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Compte", f"@{ig['username']}")
-            with col2:
-                st.metric("Followers", f"{ig.get('followers_count', 0):,}")
-            with col3:
-                st.metric("Posts", ig.get('media_count', 0))
-            with col4:
-                if st.button("🗑️ Délier", key="unlink_ig"):
-                    success, msg = manager.unlink_account(st.session_state.user_id, 'instagram')
-                    if success:
-                        st.success(msg)
-                        st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Facebook Pages
-        if 'facebook_pages' in linked_accounts and linked_accounts['facebook_pages']:
-            st.markdown("<h4 style='color: #1E293B;'>📄 Pages Facebook</h4>", unsafe_allow_html=True)
-            
-            for page in linked_accounts['facebook_pages']:
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Page", page['name'])
-                with col2:
-                    st.metric("Fans", f"{page.get('fans_count', 0):,}")
-                with col3:
-                    st.metric("Followers", f"{page.get('followers_count', 0):,}")
-                with col4:
-                    if st.button("🗑️ Délier", key=f"unlink_page_{page['id']}"):
-                        success, msg = manager.unlink_facebook_page(st.session_state.user_id, page['id'])
-                        if success:
-                            st.success(msg)
-                            st.rerun()
-                
-                st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Bouton pour ajouter un compte
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("➕ Ajouter un compte social", use_container_width=True):
-            st.session_state.current_page = "accounts"
-            st.rerun()
 
 
 def show_settings():
