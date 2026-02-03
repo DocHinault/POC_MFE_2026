@@ -107,6 +107,36 @@ class LocalFileDatabase:
         self._save()
         return True
 
+    def get_user(self, user_id: str) -> Optional[dict]:
+        """Alias pour récupérer un utilisateur avec comptes liés"""
+        client = self.get_client_by_id(user_id)
+        if not client:
+            return None
+        stored = self.data.get('clients', {}).get(user_id, {})
+        client['linked_accounts'] = stored.get('linked_accounts', {})
+        return client
+
+    def update_user(self, user_id: str, user_data: dict) -> bool:
+        """Met à jour un utilisateur (incluant linked_accounts)"""
+        if not user_id or user_id not in self.data.get('clients', {}):
+            return False
+
+        current = self.data['clients'][user_id]
+        linked_accounts = user_data.get('linked_accounts', current.get('linked_accounts', {}))
+
+        current.update({
+            'email': user_data.get('email', current.get('email')),
+            'password_hash': user_data.get('password_hash', current.get('password_hash')),
+            'id_fb': user_data.get('id_fb', current.get('id_fb')),
+            'id_insta': user_data.get('id_insta', current.get('id_insta')),
+            'nom_entreprise': user_data.get('nom_entreprise', current.get('nom_entreprise')),
+            'secteur': user_data.get('secteur', current.get('secteur')),
+            'created_at': user_data.get('created_at', current.get('created_at')),
+            'linked_accounts': linked_accounts
+        })
+        self._save()
+        return True
+
 
 
 class SheetDatabase:
@@ -164,6 +194,35 @@ class SheetDatabase:
         """Ajoute les en-têtes à la feuille CLIENTS"""
         headers = ['ID_CLIENT', 'EMAIL', 'MDP', 'ID_FB', 'ID_INSTA', 'NOM_ENTREPRISE', 'SECTEUR', 'CREE_LE']
         self.clients_sheet.insert_row(headers, 1)
+
+    def _get_headers(self) -> List[str]:
+        """Récupère les en-têtes de la feuille CLIENTS"""
+        try:
+            headers = self.clients_sheet.row_values(1)
+            return headers or []
+        except Exception:
+            return []
+
+    def _ensure_linked_accounts_column(self) -> Tuple[List[str], int]:
+        """Assure l'existence de la colonne LINKED_ACCOUNTS"""
+        headers = self._get_headers()
+        if not headers:
+            headers = ['ID_CLIENT', 'EMAIL', 'MDP', 'ID_FB', 'ID_INSTA', 'NOM_ENTREPRISE', 'SECTEUR', 'CREE_LE']
+            self.clients_sheet.insert_row(headers, 1)
+
+        if 'LINKED_ACCOUNTS' not in headers:
+            headers.append('LINKED_ACCOUNTS')
+            self.clients_sheet.update('A1', [headers])
+
+        return headers, headers.index('LINKED_ACCOUNTS')
+
+    def _col_letter(self, col_index: int) -> str:
+        """Convertit un index de colonne (1-based) en lettre"""
+        result = ""
+        while col_index > 0:
+            col_index, remainder = divmod(col_index - 1, 26)
+            result = chr(65 + remainder) + result
+        return result
     
     def find_client_by_email(self, email: str) -> Optional[Tuple[int, List]]:
         """
@@ -246,6 +305,72 @@ class SheetDatabase:
         except Exception as e:
             print(f"Erreur lors de la recherche client par ID: {e}")
             return None
+
+    def get_user(self, user_id: str) -> Optional[dict]:
+        """Récupère un utilisateur et ses comptes liés"""
+        try:
+            headers, linked_idx = self._ensure_linked_accounts_column()
+            all_values = self.clients_sheet.get_all_values()
+
+            for idx, row in enumerate(all_values[1:], start=2):
+                if len(row) > 0 and row[0] == user_id:
+                    row_data = {headers[i]: row[i] if i < len(row) else '' for i in range(len(headers))}
+                    linked_raw = row_data.get('LINKED_ACCOUNTS', '')
+                    linked_accounts = {}
+                    if linked_raw:
+                        try:
+                            linked_accounts = json.loads(linked_raw)
+                        except Exception:
+                            linked_accounts = {}
+
+                    return {
+                        'id_client': row_data.get('ID_CLIENT', ''),
+                        'email': row_data.get('EMAIL', ''),
+                        'password_hash': row_data.get('MDP', ''),
+                        'id_fb': row_data.get('ID_FB', ''),
+                        'id_insta': row_data.get('ID_INSTA', ''),
+                        'nom_entreprise': row_data.get('NOM_ENTREPRISE', ''),
+                        'secteur': row_data.get('SECTEUR', ''),
+                        'created_at': row_data.get('CREE_LE', ''),
+                        'linked_accounts': linked_accounts
+                    }
+
+            return None
+        except Exception as e:
+            print(f"Erreur lors de la récupération user: {e}")
+            return None
+
+    def update_user(self, user_id: str, user_data: dict) -> bool:
+        """Met à jour un utilisateur (incluant linked_accounts)"""
+        try:
+            headers, linked_idx = self._ensure_linked_accounts_column()
+            all_values = self.clients_sheet.get_all_values()
+
+            for idx, row in enumerate(all_values[1:], start=2):
+                if len(row) > 0 and row[0] == str(user_id):
+                    row_map = {headers[i]: row[i] if i < len(row) else '' for i in range(len(headers))}
+
+                    row_map['EMAIL'] = user_data.get('email', row_map.get('EMAIL', ''))
+                    row_map['MDP'] = user_data.get('password_hash', row_map.get('MDP', ''))
+                    row_map['ID_FB'] = user_data.get('id_fb', row_map.get('ID_FB', ''))
+                    row_map['ID_INSTA'] = user_data.get('id_insta', row_map.get('ID_INSTA', ''))
+                    row_map['NOM_ENTREPRISE'] = user_data.get('nom_entreprise', row_map.get('NOM_ENTREPRISE', ''))
+                    row_map['SECTEUR'] = user_data.get('secteur', row_map.get('SECTEUR', ''))
+                    row_map['CREE_LE'] = row_map.get('CREE_LE', '')
+
+                    linked_accounts = user_data.get('linked_accounts', {})
+                    row_map['LINKED_ACCOUNTS'] = json.dumps(linked_accounts, ensure_ascii=False)
+
+                    new_row = [row_map.get(h, '') for h in headers]
+                    end_col = self._col_letter(len(headers))
+                    self.clients_sheet.update(f"A{idx}:{end_col}{idx}", [new_row])
+                    return True
+
+            print(f"Utilisateur {user_id} non trouvé dans le sheet")
+            return False
+        except Exception as e:
+            print(f"Erreur lors de la mise à jour user: {e}")
+            return False
     
     def update_client(self, client_data: dict) -> bool:
         """Met à jour les données d'un client"""

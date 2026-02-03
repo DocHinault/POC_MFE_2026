@@ -122,6 +122,31 @@ def show_analysis_tab():
             <p style='font-size: 0.95rem; margin: 0; opacity: 0.6;'>Connectez vos comptes Instagram et Facebook pour activer l'analyse</p>
         </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        colta, coltb, coltc = st.columns([1, 1, 1])
+        with coltb:
+            if st.button("🧪 Lancer une analyse test", use_container_width=True, key="run_analysis_test_no_links"):
+                st.session_state.show_test_report_download_no_links = True
+
+        if st.session_state.get("show_test_report_download_no_links"):
+            import os
+
+            pdf_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..", "Test rapport 2026.pdf")
+            )
+            if os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as pdf_file:
+                    st.download_button(
+                        "⬇️ Télécharger le rapport test (PDF)",
+                        data=pdf_file.read(),
+                        file_name="Test rapport 2026.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                        key="download_test_report_no_links"
+                    )
+            else:
+                st.error("❌ Le fichier PDF de test est introuvable.")
         return
     
     # Afficher les options d'analyse
@@ -238,3 +263,29 @@ def show_analysis_tab():
                         
                 except Exception as e:
                     st.error(f"❌ Erreur lors de l'analyse: {str(e)}")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    colt1, colt2, colt3 = st.columns([1, 1, 1])
+    with colt2:
+        if st.button("🧪 Lancer une analyse test", use_container_width=True, key="run_analysis_test"):
+            st.session_state.show_test_report_download = True
+
+    if st.session_state.get("show_test_report_download"):
+        import os
+
+        pdf_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "Test rapport 2026.pdf")
+        )
+        if os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as pdf_file:
+                st.download_button(
+                    "⬇️ Télécharger le rapport test (PDF)",
+                    data=pdf_file.read(),
+                    file_name="Test rapport 2026.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key="download_test_report"
+                )
+        else:
+            st.error("❌ Le fichier PDF de test est introuvable.")

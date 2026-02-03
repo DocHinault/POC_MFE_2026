@@ -679,6 +679,149 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
         except Exception as e:
             logger.error(f"Erreur génération Excel KPI: {e}")
             return ""
+
+    def _build_sample_kpis(self) -> Dict[str, Any]:
+        """
+        Construit des KPI factices pour une analyse de test.
+
+        Returns:
+            Dict avec des KPI simulés pour Instagram/Facebook
+        """
+        now = datetime.now()
+        period_start = (now - timedelta(days=30)).isoformat()
+        period_end = now.isoformat()
+
+        instagram_kpis = {
+            'platform': 'Instagram',
+            'account_id': 'demo-instagram',
+            'period_start': period_start,
+            'period_end': period_end,
+            'impressions': 185000,
+            'reach': 92000,
+            'engagement_rate': 4.2,
+            'followers_growth': 320,
+            'top_posts': [
+                {
+                    'id': 'ig_1',
+                    'caption': 'Post promo produit A',
+                    'likes': 2100,
+                    'comments': 140,
+                    'engagement': 2240,
+                    'timestamp': (now - timedelta(days=5)).isoformat(),
+                    'type': 'IMAGE'
+                },
+                {
+                    'id': 'ig_2',
+                    'caption': 'Reel coulisses',
+                    'likes': 1800,
+                    'comments': 220,
+                    'engagement': 2020,
+                    'timestamp': (now - timedelta(days=9)).isoformat(),
+                    'type': 'REEL'
+                }
+            ],
+            'average_engagement': 1850,
+            'total_engagement': 14800,
+            'total_posts': 8,
+            'profile_views': 5300
+        }
+
+        facebook_kpis = {
+            'platform': 'Facebook',
+            'page_id': 'demo-facebook',
+            'period_start': period_start,
+            'period_end': period_end,
+            'reach': 64000,
+            'impressions': 120000,
+            'engagement_rate': 3.1,
+            'fans_growth': 180,
+            'top_posts': [
+                {
+                    'id': 'fb_1',
+                    'message': 'Annonce événement',
+                    'likes': 900,
+                    'comments': 85,
+                    'shares': 42,
+                    'engagement': 1069,
+                    'created_time': (now - timedelta(days=7)).isoformat(),
+                    'type': 'status'
+                }
+            ],
+            'average_engagement': 760,
+            'total_engagement': 6100,
+            'total_posts': 6,
+            'page_views': 2800,
+            'total_fans': 12400
+        }
+
+        return {
+            'instagram': instagram_kpis,
+            'facebook': [facebook_kpis]
+        }
+
+    def run_test_pipeline(self) -> Dict[str, Any]:
+        """
+        Lance un pipeline de test avec des KPI factices.
+
+        Returns:
+            Dict avec le résultat et les fichiers générés
+        """
+        result = {
+            'success': False,
+            'instagram_kpis': None,
+            'facebook_kpis': None,
+            'gpt_recommendations': None,
+            'powerpoint_path': None,
+            'excel_path': None,
+            'email_sent': False,
+            'errors': []
+        }
+
+        try:
+            logger.info("🧪 Démarrage du pipeline de test")
+            self.kpis = self._build_sample_kpis()
+            result['instagram_kpis'] = self.kpis.get('instagram')
+            result['facebook_kpis'] = self.kpis.get('facebook')
+
+            gpt_key = os.getenv('OPENAI_API_KEY')
+            if gpt_key:
+                logger.info("🤖 Analyse GPT (test)...")
+                try:
+                    recs = self.get_gpt_recommendations(gpt_key)
+                    result['gpt_recommendations'] = recs
+                    logger.info("✅ Recommandations GPT générées (test)")
+                except Exception as e:
+                    result['errors'].append(f"GPT: {str(e)}")
+                    logger.warning(f"⚠️ GPT erreur (test): {e}")
+            else:
+                result['errors'].append("OPENAI_API_KEY manquante")
+
+            logger.info("📊 Génération PowerPoint (test)...")
+            pptx_path = self.generate_powerpoint()
+            if pptx_path:
+                result['powerpoint_path'] = pptx_path
+
+            logger.info("📈 Génération Excel KPI (test)...")
+            excel_path = self.generate_kpi_excel()
+            if excel_path:
+                result['excel_path'] = excel_path
+
+            if result.get('powerpoint_path') and result.get('excel_path'):
+                logger.info("📧 Envoi email (test)...")
+                email_sent = self.send_email_report(
+                    result['powerpoint_path'],
+                    excel_path=result.get('excel_path'),
+                    sheet_url=None
+                )
+                result['email_sent'] = email_sent
+
+            result['success'] = len(result['errors']) == 0 or result.get('powerpoint_path') is not None
+            return result
+
+        except Exception as e:
+            result['errors'].append(f"Pipeline test: {str(e)}")
+            logger.error(f"Erreur pipeline test: {e}")
+            return result
     
     def send_email_report(self, powerpoint_path: str, excel_path: str = None, sheet_url: str = None) -> bool:
         """

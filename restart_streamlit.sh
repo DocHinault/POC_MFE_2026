@@ -12,4 +12,4 @@ sleep 3
 echo "🚀 Lancement de Streamlit sur le port 8504..."
 cd /workspaces/POC_MFE_2026
 source .venv/bin/activate 2>/dev/null || true
-streamlit run streamlit_app.py --server.port=8504
+/workspaces/POC_MFE_2026/.venv/bin/python -m streamlit run streamlit_app.py --server.port=8504
