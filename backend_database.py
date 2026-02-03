@@ -252,32 +252,40 @@ class SheetDatabase:
         try:
             client_id = client_data.get('id_client')
             if not client_id:
+                print("Erreur: id_client manquant dans client_data")
                 return False
             
             all_values = self.clients_sheet.get_all_values()
             
+            # Chercher le client par son ID
             for idx, row in enumerate(all_values[1:], start=2):  # Commencer à la ligne 2 (après headers)
-                if len(row) > 0 and row[0] == client_id:
+                if len(row) > 0 and row[0] == str(client_id):
                     # Préparer la nouvelle ligne
                     new_row = [
-                        client_data.get('id_client', row[0]),
-                        client_data.get('email', row[1]),
-                        client_data.get('password_hash', row[2]),
-                        client_data.get('id_fb', row[3]),
-                        client_data.get('id_insta', row[4]),
-                        client_data.get('nom_entreprise', row[5]),
-                        client_data.get('secteur', row[6]),
-                        row[7]  # Garder la date de création
+                        str(client_data.get('id_client', row[0])),
+                        client_data.get('email', row[1] if len(row) > 1 else ''),
+                        client_data.get('password_hash', row[2] if len(row) > 2 else ''),
+                        client_data.get('id_fb', row[3] if len(row) > 3 else ''),
+                        client_data.get('id_insta', row[4] if len(row) > 4 else ''),
+                        client_data.get('nom_entreprise', row[5] if len(row) > 5 else ''),
+                        client_data.get('secteur', row[6] if len(row) > 6 else ''),
+                        row[7] if len(row) > 7 else '',  # Garder la date de création
                     ]
                     
                     # Mettre à jour la ligne
-                    self.clients_sheet.delete_rows(idx, 1)
-                    self.clients_sheet.insert_row(new_row, idx)
-                    return True
+                    try:
+                        self.clients_sheet.update(f"A{idx}:H{idx}", [new_row])
+                        print(f"Client {client_id} mis à jour avec succès")
+                        return True
+                    except Exception as e:
+                        print(f"Erreur lors de l'update de la ligne: {e}")
+                        return False
             
+            print(f"Client {client_id} non trouvé dans le sheet")
             return False
         except Exception as e:
             print(f"Erreur lors de la mise à jour du client: {e}")
+            return False
             return False
 
 

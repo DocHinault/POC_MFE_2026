@@ -1,6 +1,6 @@
 import streamlit as st
-from auth import initialize_session_state
-from page_functions import page_auth, page_login, page_registration, page_confirmation, page_p1
+from src.auth import initialize_session_state, page_auth, page_login, page_registration, page_confirmation
+from src.profile import page_p1
 
 # Initialiser le backend local
 import os
@@ -91,7 +91,7 @@ except Exception as e:
 
 # Configuration de la page
 st.set_page_config(
-    page_title="MG - POC V1 - Social Media Reporting",
+    page_title="POC-MFE-2026 - Social Media Reporting",
     page_icon="📊",
     layout="centered",
     initial_sidebar_state="collapsed"

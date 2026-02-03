@@ -179,7 +179,11 @@ def login(email: str, password: str, pepper: str) -> Dict[str, Any]:
     return {
         'ok': True,
         'id_client': client['id_client'],
-        'email': email
+        'email': email,
+        'nom_entreprise': client.get('nom_entreprise', ''),
+        'secteur': client.get('secteur', ''),
+        'id_fb': client.get('id_fb', ''),
+        'id_insta': client.get('id_insta', '')
     }
 
 
@@ -244,18 +248,25 @@ def update_user_profile(user_id: str, email: str = None, nom_entreprise: str = N
         password: Nouveau mot de passe (optionnel)
         pepper: Clé secrète pour PBKDF2
     """
+    print(f"🔍 [backend_service] update_user_profile appelé avec user_id={user_id}")
+    
     # Validation
     if not user_id:
+        print(f"❌ [backend_service] user_id manquant")
         return {'ok': False, 'error': 'INVALID_INPUT'}
     
     # Récupérer le client
     db = database.get_database()
     if not db:
+        print(f"❌ [backend_service] Database non disponible")
         return {'ok': False, 'error': 'DATABASE_ERROR'}
     
     client = db.get_client_by_id(user_id)
     if not client:
+        print(f"❌ [backend_service] Client {user_id} non trouvé")
         return {'ok': False, 'error': 'CLIENT_NOT_FOUND'}
+    
+    print(f"✅ [backend_service] Client trouvé: {client}")
     
     # Valider les nouvelles données
     if email and not validate_email(email):
@@ -273,35 +284,34 @@ def update_user_profile(user_id: str, email: str = None, nom_entreprise: str = N
     if secteur and not validate_secteur(secteur):
         return {'ok': False, 'error': 'INVALID_SECTEUR'}
     
-    # Préparer la mise à jour
-    update_data = {'id_client': user_id}
+    # Préparer la mise à jour - utiliser les valeurs existantes comme fallback
+    update_data = {
+        'id_client': user_id,
+        'email': email if email else client.get('email'),
+        'nom_entreprise': nom_entreprise if nom_entreprise else client.get('nom_entreprise'),
+        'secteur': secteur if secteur else client.get('secteur'),
+        'password_hash': auth.hash_password(password, pepper) if password and pepper else client.get('password_hash'),
+        'id_fb': client.get('id_fb', ''),
+        'id_insta': client.get('id_insta', ''),
+    }
     
-    if email:
-        update_data['email'] = email
-    
-    if nom_entreprise:
-        update_data['nom_entreprise'] = nom_entreprise
-    
-    if secteur:
-        update_data['secteur'] = secteur
-    
-    if password and pepper:
-        update_data['password_hash'] = auth.hash_password(password, pepper)
-    else:
-        update_data['password_hash'] = client.get('password_hash')
-    
-    # Ajouter les champs non modifiables
-    update_data['id_fb'] = client.get('id_fb', '')
-    update_data['id_insta'] = client.get('id_insta', '')
+    print(f"📝 [backend_service] Données de mise à jour: {update_data}")
     
     # Mettre à jour dans la base de données
-    if db and hasattr(db, 'update_client'):
-        result = db.update_client(update_data)
-        if result:
-            return {'ok': True, 'id_client': user_id}
+    try:
+        if db and hasattr(db, 'update_client'):
+            result = db.update_client(update_data)
+            print(f"🔄 [backend_service] Résultat update_client: {result}")
+            if result:
+                return {'ok': True, 'id_client': user_id}
+            else:
+                return {'ok': False, 'error': 'UPDATE_FAILED'}
         else:
-            return {'ok': False, 'error': 'UPDATE_FAILED'}
-    else:
-        # Fallback: mettre à jour le client en cache
-        cache.put(f'CLIENT_{user_id}', update_data, 24 * 60 * 60)
-        return {'ok': True, 'id_client': user_id}
+            # Fallback: mettre à jour le client en cache
+            cache.put(f'CLIENT_{user_id}', update_data, 24 * 60 * 60)
+            return {'ok': True, 'id_client': user_id}
+    except Exception as e:
+        print(f"❌ [backend_service] Erreur lors de la mise à jour: {e}")
+        import traceback
+        traceback.print_exc()
+        return {'ok': False, 'error': 'UPDATE_FAILED'}

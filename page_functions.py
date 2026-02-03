@@ -1079,7 +1079,7 @@ def show_analysis_tab():
                         st.success("✅ Analyse complétée avec succès!")
                         st.success(f"📊 {result['instagram_kpis'].get('total_posts', 0) if result['instagram_kpis'] else 0} posts Instagram analysés")
                         if result['email_sent']:
-                            st.info("📧 Le rapport a été envoyé à votre email")
+                            st.info("📧 Le rapport a été envoyé à l'adresse de reporting interne")
                         if result['powerpoint_path']:
                             st.info(f"📄 PowerPoint généré: {result['powerpoint_path']}")
                     else:

@@ -589,13 +589,104 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
         except Exception as e:
             logger.error(f"Erreur génération PowerPoint: {e}")
             return ""
-    
-    def send_email_report(self, powerpoint_path: str, sheet_url: str = None) -> bool:
+
+    def generate_kpi_excel(self, output_path: str = None) -> str:
         """
-        Envoie le rapport par email avec PowerPoint et Google Sheet
+        Génère un fichier Excel avec les KPI et les top posts.
+
+        Args:
+            output_path: Chemin de sortie (optionnel)
+
+        Returns:
+            Chemin du fichier Excel généré ou chaîne vide si échec
+        """
+        try:
+            import pandas as pd
+
+            if not self.kpis:
+                logger.warning("⚠️ Aucun KPI disponible pour générer l'Excel")
+                return ""
+
+            if output_path is None:
+                output_path = f"/tmp/kpis_{self.user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+            instagram_kpis = self.kpis.get('instagram') if isinstance(self.kpis.get('instagram'), dict) else None
+            facebook_raw = self.kpis.get('facebook')
+            facebook_kpis_list = []
+            if isinstance(facebook_raw, list):
+                facebook_kpis_list = facebook_raw
+            elif isinstance(facebook_raw, dict) and facebook_raw:
+                facebook_kpis_list = [facebook_raw]
+
+            summary_rows = []
+            if instagram_kpis:
+                summary_rows.append({
+                    'platform': 'Instagram',
+                    'account_id': instagram_kpis.get('account_id'),
+                    'period_start': instagram_kpis.get('period_start'),
+                    'period_end': instagram_kpis.get('period_end'),
+                    'impressions': instagram_kpis.get('impressions'),
+                    'reach': instagram_kpis.get('reach'),
+                    'engagement_rate': instagram_kpis.get('engagement_rate'),
+                    'total_posts': instagram_kpis.get('total_posts'),
+                    'total_engagement': instagram_kpis.get('total_engagement'),
+                    'average_engagement': instagram_kpis.get('average_engagement'),
+                    'profile_views': instagram_kpis.get('profile_views'),
+                    'followers_growth': instagram_kpis.get('followers_growth')
+                })
+
+            for fb_kpis in facebook_kpis_list:
+                summary_rows.append({
+                    'platform': 'Facebook',
+                    'page_id': fb_kpis.get('page_id'),
+                    'period_start': fb_kpis.get('period_start'),
+                    'period_end': fb_kpis.get('period_end'),
+                    'impressions': fb_kpis.get('impressions'),
+                    'reach': fb_kpis.get('reach'),
+                    'engagement_rate': fb_kpis.get('engagement_rate'),
+                    'total_posts': fb_kpis.get('total_posts'),
+                    'total_engagement': fb_kpis.get('total_engagement'),
+                    'average_engagement': fb_kpis.get('average_engagement'),
+                    'page_views': fb_kpis.get('page_views'),
+                    'total_fans': fb_kpis.get('total_fans'),
+                    'fans_growth': fb_kpis.get('fans_growth')
+                })
+
+            with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+                if summary_rows:
+                    pd.DataFrame(summary_rows).to_excel(writer, sheet_name="KPI_Summary", index=False)
+
+                if instagram_kpis and instagram_kpis.get('top_posts'):
+                    pd.DataFrame(instagram_kpis.get('top_posts')).to_excel(
+                        writer, sheet_name="Instagram_Top_Posts", index=False
+                    )
+
+                facebook_posts = []
+                for fb_kpis in facebook_kpis_list:
+                    for post in fb_kpis.get('top_posts', []):
+                        facebook_posts.append({
+                            'page_id': fb_kpis.get('page_id'),
+                            **post
+                        })
+                if facebook_posts:
+                    pd.DataFrame(facebook_posts).to_excel(
+                        writer, sheet_name="Facebook_Top_Posts", index=False
+                    )
+
+            logger.info(f"✅ Excel KPI généré: {output_path}")
+            return output_path
+
+        except Exception as e:
+            logger.error(f"Erreur génération Excel KPI: {e}")
+            return ""
+    
+    def send_email_report(self, powerpoint_path: str, excel_path: str = None, sheet_url: str = None) -> bool:
+        """
+        Envoie le rapport par email interne avec PowerPoint et Excel KPI
         
         Args:
             powerpoint_path: Chemin du fichier PowerPoint
+            excel_path: Chemin du fichier Excel KPI (optionnel)
             sheet_url: URL de la Google Sheet (optionnel)
             
         Returns:
@@ -613,16 +704,21 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
             sender_password = os.getenv('SMTP_PASSWORD', '')
             smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
             smtp_port = int(os.getenv('SMTP_PORT', '587'))
+            recipient_email = os.getenv('ANALYSIS_REPORT_EMAIL')
             
             if not sender_password:
                 logger.warning("❌ SMTP_PASSWORD non configuré, email non envoyé")
                 return False
+            if not recipient_email:
+                logger.warning("❌ ANALYSIS_REPORT_EMAIL non configuré, email non envoyé")
+                return False
+            analysis = self.gpt_recommendations or {}
             
             # Créer le message
             msg = MIMEMultipart('alternative')
             msg['Subject'] = f"📊 Rapport d'Analyse - {self.user_name}"
             msg['From'] = sender_email
-            msg['To'] = self.user_email
+            msg['To'] = recipient_email
             
             # Corps du message HTML
             html_body = f"""
@@ -648,7 +744,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                         <ul style="color: #333; font-size: 14px;">
             """
             
-            for obj in self.gpt_recommendations.get('objectives', []):
+            for obj in analysis.get('objectives', []):
                 html_body += f"<li style='margin: 8px 0;'>{obj}</li>"
             
             html_body += """
@@ -658,7 +754,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                         <ul style="color: #333; font-size: 14px;">
             """
             
-            for strength in self.gpt_recommendations.get('strengths', []):
+            for strength in analysis.get('strengths', []):
                 html_body += f"<li style='margin: 8px 0;'>{strength}</li>"
             
             html_body += """
@@ -668,7 +764,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                         <ul style="color: #333; font-size: 14px;">
             """
             
-            for weakness in self.gpt_recommendations.get('weaknesses', []):
+            for weakness in analysis.get('weaknesses', []):
                 html_body += f"<li style='margin: 8px 0;'>{weakness}</li>"
             
             html_body += """
@@ -678,7 +774,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                         <ol style="color: #333; font-size: 14px;">
             """
             
-            for idea in self.gpt_recommendations.get('next_post_ideas', []):
+            for idea in analysis.get('next_post_ideas', []):
                 if isinstance(idea, dict):
                     idea_text = f"<strong>{idea.get('title', 'Idée')}</strong>: {idea.get('description', '')}"
                 else:
@@ -691,7 +787,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                         <hr style="border: none; border-top: 2px solid #e0e0e0; margin: 20px 0;">
                         
                         <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px;">
-                            📎 <strong>Pièces jointes:</strong> Présentation PowerPoint + Données Google Sheet<br>
+                            📎 <strong>Pièces jointes:</strong> Présentation PowerPoint + Excel KPI<br>
                             Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}
                         </p>
                         
@@ -718,6 +814,18 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                         f'attachment; filename= {os.path.basename(powerpoint_path)}'
                     )
                     msg.attach(part)
+
+            # Attacher l'Excel KPI
+            if excel_path and os.path.exists(excel_path):
+                with open(excel_path, 'rb') as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        'Content-Disposition',
+                        f'attachment; filename= {os.path.basename(excel_path)}'
+                    )
+                    msg.attach(part)
             
             # Envoyer l'email
             server = smtplib.SMTP(smtp_server, smtp_port)
@@ -726,7 +834,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
             server.send_message(msg)
             server.quit()
             
-            logger.info(f"✅ Email envoyé à {self.user_email}")
+            logger.info(f"✅ Email envoyé à {recipient_email}")
             return True
             
         except Exception as e:
@@ -752,6 +860,7 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
             'facebook_kpis': None,
             'gpt_recommendations': None,
             'powerpoint_path': None,
+            'excel_path': None,
             'sheet_saved': False,
             'email_sent': False,
             'errors': []
@@ -835,13 +944,26 @@ Réponds UNIQUEMENT avec le JSON, sans aucun texte supplémentaire.
                 except Exception as e:
                     result['errors'].append(f"PowerPoint: {str(e)}")
                     logger.error(f"❌ PowerPoint erreur: {e}")
+
+            # Étape 5bis: Générer Excel KPI
+            if self.kpis:
+                logger.info("📈 Génération Excel KPI...")
+                try:
+                    excel_path = self.generate_kpi_excel()
+                    if excel_path:
+                        result['excel_path'] = excel_path
+                        logger.info(f"✅ Excel KPI généré: {excel_path}")
+                except Exception as e:
+                    result['errors'].append(f"Excel KPI: {str(e)}")
+                    logger.error(f"❌ Excel KPI erreur: {e}")
             
             # Étape 6: Envoyer par email
-            if result.get('powerpoint_path') and self.gpt_recommendations:
+            if result.get('powerpoint_path') and result.get('excel_path'):
                 logger.info("📧 Envoi du rapport par email...")
                 try:
                     email_sent = self.send_email_report(
                         result['powerpoint_path'],
+                        excel_path=result.get('excel_path'),
                         sheet_url=None
                     )
                     result['email_sent'] = email_sent
