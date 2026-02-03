@@ -1,0 +1,23 @@
+# Compatibility shim - pages.py is now replaced by page_functions.py
+# This file is kept for backwards compatibility only
+# All actual implementation is in page_functions.py
+
+from page_functions import (
+    page_auth,
+    page_login,
+    page_registration,
+    page_confirmation,
+    page_p1,
+    show_dashboard,
+    show_settings
+)
+
+__all__ = [
+    'page_auth',
+    'page_login', 
+    'page_registration',
+    'page_confirmation',
+    'page_p1',
+    'show_dashboard',
+    'show_settings'
+]

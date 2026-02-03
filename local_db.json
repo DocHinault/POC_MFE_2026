@@ -1,0 +1,40 @@
+{
+  "clients": {
+    "efb0fe3a-0851-4dba-a871-8dc95d06b977": {
+      "email": "hinaultpro@gmail.com",
+      "password_hash": "pbkdf2_sha256$50000$p2qxAE2bIb659V0L6LJCFg==$OwZakloov1Nr4a84ZikBvG5D8mYfDFEhnvzGD9pj6p0=",
+      "id_fb": "",
+      "id_insta": "",
+      "nom_entreprise": "LeTest",
+      "secteur": "Influenceur",
+      "created_at": "2026-02-02T21:26:28.213764"
+    },
+    "96f08d94-f066-4b53-9274-779000f2f43a": {
+      "email": "morgan29.mh@gmail.com",
+      "password_hash": "pbkdf2_sha256$50000$joelrroSTm7pINslO7ATRw==$uQZcQNAImGvtEr1e7uRXyopVdFLi4Ue4NBIGTMd8pGg=",
+      "id_fb": "",
+      "id_insta": "",
+      "nom_entreprise": "LeTest2",
+      "secteur": "Influenceur",
+      "created_at": "2026-02-02T21:40:23.262470"
+    },
+    "13e61970-801e-4417-a48a-f08cfd1aa5c4": {
+      "email": "copilot_test+1770068926@example.com",
+      "password_hash": "pbkdf2_sha256$50000$4n/jheB5NpfUitmsR52IxA==$Vc8neoEATttE/vuvSBbBpacnWle2zqDpAXMc7PQCNYk=",
+      "id_fb": "",
+      "id_insta": "",
+      "nom_entreprise": "CopilotTest",
+      "secteur": "Influenceur",
+      "created_at": "2026-02-02T21:48:46.618460"
+    },
+    "2084ed5b-32ee-4ad6-be43-4b64b4f09e49": {
+      "email": "copilot_final+1770069056@example.com",
+      "password_hash": "pbkdf2_sha256$50000$wjC7rdzLYpEgJTXF2NiDHw==$lxwYjDbpS3PpDq02XWG1EfZwh64hKy0mLWDseBa4G+Q=",
+      "id_fb": "",
+      "id_insta": "",
+      "nom_entreprise": "FinalTest",
+      "secteur": "Influenceur",
+      "created_at": "2026-02-02T21:50:56.452544"
+    }
+  }
+}
